@@ -10,6 +10,7 @@ export interface PublishRequest {
   ownerInstagram: string;
   ownerTikTok: string;
   ownerYouTube: string;
+  igMentions: string[];
   hashtags: string[];
   platforms: {
     instagram: boolean;
@@ -18,9 +19,10 @@ export interface PublishRequest {
   };
 }
 
-function buildInstagramCaption(description: string, owner: string, hashtags: string[]): string {
+function buildInstagramCaption(description: string, owner: string, mentions: string[], hashtags: string[]): string {
   const tags = hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ");
-  return `${description}\n\nCarro de ${owner} 🚗\n\n${tags}`.trim();
+  const mentionLine = mentions.length > 0 ? `\n${mentions.join(" ")}` : "";
+  return `${description}\n\nCarro de ${owner} 🚗${mentionLine}\n\n${tags}`.trim();
 }
 
 function buildTikTokCaption(description: string, owner: string, hashtags: string[]): string {
@@ -35,7 +37,7 @@ function buildYouTubeDescription(description: string, owner: string, hashtags: s
 
 export async function POST(req: NextRequest) {
   const body: PublishRequest = await req.json();
-  const { videoUrl, title, description, ownerInstagram, ownerTikTok, ownerYouTube, hashtags, platforms } = body;
+  const { videoUrl, title, description, ownerInstagram, ownerTikTok, ownerYouTube, igMentions = [], hashtags, platforms } = body;
 
   if (!videoUrl) {
     return NextResponse.json({ error: "Missing video URL" }, { status: 400 });
@@ -44,7 +46,7 @@ export async function POST(req: NextRequest) {
   const tasks: Promise<{ platform: string; success: boolean; error?: string; id?: string }>[] = [];
 
   if (platforms.instagram) {
-    const caption = buildInstagramCaption(description, ownerInstagram, hashtags);
+    const caption = buildInstagramCaption(description, ownerInstagram, igMentions, hashtags);
     tasks.push(
       publishToInstagram(videoUrl, caption).then((r) => ({
         platform: "instagram",
